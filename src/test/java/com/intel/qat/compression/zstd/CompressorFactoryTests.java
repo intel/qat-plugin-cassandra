@@ -6,11 +6,7 @@
 
 package com.intel.qat.compression.zstd;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -18,47 +14,45 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import org.apache.cassandra.io.compress.AbstractCompressionProvider;
 import org.apache.cassandra.io.compress.ICompressor;
-import org.apache.cassandra.io.compress.ICompressorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 public class CompressorFactoryTests {
-  ServiceLoader<ICompressorFactory> loader;
-  private QatZstdCompressorFactory factory;
+  ServiceLoader<AbstractCompressionProvider> loader;
+  private QatZstdCompressionProvider provider;
 
   @BeforeEach
   void setup() {
-    loader = ServiceLoader.load(ICompressorFactory.class);
-    factory = new QatZstdCompressorFactory();
+    loader = ServiceLoader.load(AbstractCompressionProvider.class);
+    provider = new QatZstdCompressionProvider();
   }
-
-  public void testZstdFactoryName() {}
 
   @Test
   public void testServiceLoaderTest() {
-    loader = ServiceLoader.load(ICompressorFactory.class);
     Map<String, String> options = new HashMap<>();
-    Optional<ICompressorFactory> compressorFactory =
+    Optional<AbstractCompressionProvider> compressorFactory =
         loader.stream()
             .filter(
-                provider -> provider.get().getSupportedCompressorName().equals("ZstdCompressor"))
+                provider ->
+                    provider.get().getClass().getSimpleName().equals("QatZstdCompressionProvider"))
             .map(ServiceLoader.Provider::get)
             .findFirst();
 
     assertTrue(compressorFactory.isPresent());
-    ICompressor compressor = compressorFactory.get().createCompressor(options);
+    ICompressor compressor =
+        compressorFactory.get().createCompressor(QatZstdCompressor.class, options);
     assertNotNull(compressor);
     assertInstanceOf(QatZstdCompressor.class, compressor);
   }
 
   @Test
   public void testServiceLoaderTestNegative() {
-    loader = ServiceLoader.load(ICompressorFactory.class);
-    Optional<ICompressorFactory> compressorFactory =
+    Optional<AbstractCompressionProvider> compressorFactory =
         loader.stream()
-            .filter(provider -> provider.get().getSupportedCompressorName().equals("TestString"))
+            .filter(provider -> provider.get().getClass().getSimpleName().equals("TestString"))
             .map(ServiceLoader.Provider::get)
             .findFirst();
     assertFalse(compressorFactory.isPresent());
@@ -66,7 +60,7 @@ public class CompressorFactoryTests {
 
   @Test
   public void testCreateCompressorWithNullOptions() {
-    ICompressor compressor = factory.createCompressor(null);
+    ICompressor compressor = provider.createCompressor(QatZstdCompressor.class, null);
     assertNotNull(compressor);
     assertInstanceOf(QatZstdCompressor.class, compressor);
   }
@@ -74,7 +68,7 @@ public class CompressorFactoryTests {
   @Test
   public void testCreateCompressorWithEmptyOptions() {
     Map<String, String> options = new HashMap<>();
-    ICompressor compressor = factory.createCompressor(options);
+    ICompressor compressor = provider.createCompressor(QatZstdCompressor.class, options);
     assertNotNull(compressor);
     assertInstanceOf(QatZstdCompressor.class, compressor);
   }
@@ -84,17 +78,17 @@ public class CompressorFactoryTests {
   public void testCreateCompressorWithValidCompressionLevel() {
     Map<String, String> options = new HashMap<>();
     options.put("compression_level", "6");
-    ICompressor compressor = factory.createCompressor(options);
+    ICompressor compressor = provider.createCompressor(QatZstdCompressor.class, options);
     assertNotNull(compressor);
     assertInstanceOf(QatZstdCompressor.class, compressor);
   }
 
   @Test
-  @DisplayName("Tests factory creation with invalid compression level")
-  public void testCreateCompressorWithInvalidCompressionLevel() {
+  @DisplayName("Tests factory creation with negative compression level")
+  public void testCreateCompressorWithNegativeCompressionLevel() {
     Map<String, String> options = new HashMap<>();
     options.put("compression_level", "-1");
-    ICompressor compressor = factory.createCompressor(options);
+    ICompressor compressor = provider.createCompressor(QatZstdCompressor.class, options);
     assertNotNull(compressor);
     assertInstanceOf(QatZstdCompressor.class, compressor);
   }
@@ -108,7 +102,7 @@ public class CompressorFactoryTests {
     srcBB.flip();
     Map<String, String> options = new HashMap<>();
     options.put("compression_level", "6");
-    ICompressor compressor = factory.createCompressor(options);
+    ICompressor compressor = provider.createCompressor(QatZstdCompressor.class, options);
     assertNotNull(compressor);
     assertDoesNotThrow(
         () -> {

@@ -14,12 +14,16 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.cassandra.io.compress.BufferType;
 import org.apache.cassandra.io.compress.ICompressor;
+import org.apache.cassandra.io.compress.ZstdCompressor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * QatZstdCompressor is an implementation of ICompressor that uses Intel® QAT (QuickAssist
- * Technology) for hardware-accelerated compression and decompression using zstd algorithm.
+ * QatZstdCompressor is an implementation of ICompressor that uses Intel® QAT for
+ * hardware-accelerated compression and decompression using zstd algorithm.
  */
 public class QatZstdCompressor implements ICompressor {
+  private static final Logger logger = LoggerFactory.getLogger(QatZstdCompressor.class);
   private static final int DEFAULT_RETRY_COUNT = 1000;
   // Compression option names should be same as that used in Cassandra
   private static final String ZSTD_COMPRESSION_LEVEL_NAME = "compression_level";
@@ -34,10 +38,10 @@ public class QatZstdCompressor implements ICompressor {
         protected QatZipper initialValue() {
           QatZipper.Builder builder =
               new QatZipper.Builder()
-                  .setAlgorithm(QAT_COMPRESSOR_ALGORITHM)
-                  .setLevel(getOrDefaultLevel(compressionOptions))
-                  .setMode(QAT_COMPRESSOR_MODE)
-                  .setRetryCount(DEFAULT_RETRY_COUNT);
+                  .algorithm(QAT_COMPRESSOR_ALGORITHM)
+                  .level(getOrDefaultLevel(compressionOptions))
+                  .mode(QAT_COMPRESSOR_MODE)
+                  .retryCount(DEFAULT_RETRY_COUNT);
           QatZipper qatZipper = builder.build();
           qatZipper.setChecksumFlag(true);
           return qatZipper;
@@ -170,6 +174,11 @@ public class QatZstdCompressor implements ICompressor {
     return BufferType.OFF_HEAP;
   }
 
+  @Override
+  public Class<? extends ICompressor> serializedAs() {
+    return ZstdCompressor.class;
+  }
+
   // Should be same as that of Cassandra ZstdCompressor
   private static int getOrDefaultLevel(Map<String, String> options) {
     if (options == null) return DEFAULT_COMPRESSION_LEVEL;
@@ -178,6 +187,7 @@ public class QatZstdCompressor implements ICompressor {
 
     if (val == null) return DEFAULT_COMPRESSION_LEVEL;
 
+    // TODO: Need to handle OOB condition
     return Integer.valueOf(val);
   }
 }

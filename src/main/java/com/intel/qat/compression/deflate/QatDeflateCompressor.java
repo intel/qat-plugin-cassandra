@@ -14,11 +14,12 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import org.apache.cassandra.io.compress.BufferType;
+import org.apache.cassandra.io.compress.DeflateCompressor;
 import org.apache.cassandra.io.compress.ICompressor;
 
 /**
- * QatDeflateCompressor is an implementation of ICompressor that uses Intel® QAT (QuickAssist
- * Technology) for hardware-accelerated compression and decompression using Deflate algorithm
+ * QatDeflateCompressor is an implementation of ICompressor that uses Intel® QAT for
+ * hardware-accelerated compression and decompression using Deflate algorithm
  */
 public class QatDeflateCompressor implements ICompressor {
 
@@ -35,11 +36,11 @@ public class QatDeflateCompressor implements ICompressor {
         protected QatZipper initialValue() {
           QatZipper qzip =
               new QatZipper.Builder()
-                  .setAlgorithm(QAT_COMPRESSOR_ALGORITHM)
-                  .setLevel(getOrDefaultLevel(compressionOptions))
-                  .setMode(QAT_COMPRESSOR_MODE)
-                  .setDataFormat(QAT_COMPRESSOR_DATAFORMAT)
-                  .setRetryCount(DEFAULT_RETRY_COUNT)
+                  .algorithm(QAT_COMPRESSOR_ALGORITHM)
+                  .level(getOrDefaultLevel(compressionOptions))
+                  .mode(QAT_COMPRESSOR_MODE)
+                  .dataFormat(QAT_COMPRESSOR_DATAFORMAT)
+                  .retryCount(DEFAULT_RETRY_COUNT)
                   .build();
           return qzip;
         }
@@ -211,6 +212,11 @@ public class QatDeflateCompressor implements ICompressor {
   @Override
   public BufferType preferredBufferType() {
     return BufferType.OFF_HEAP;
+  }
+
+  @Override
+  public Class<? extends ICompressor> serializedAs() {
+    return DeflateCompressor.class;
   }
 
   // Should be same as that of DeflateCompressor

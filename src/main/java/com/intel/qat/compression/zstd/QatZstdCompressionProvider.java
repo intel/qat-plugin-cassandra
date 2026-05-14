@@ -8,8 +8,8 @@ package com.intel.qat.compression.zstd;
 
 import com.intel.qat.QatZipper;
 import java.util.Map;
+import org.apache.cassandra.io.compress.AbstractCompressionProvider;
 import org.apache.cassandra.io.compress.ICompressor;
-import org.apache.cassandra.io.compress.ICompressorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,14 +17,9 @@ import org.slf4j.LoggerFactory;
  * This is a factory class used to create a zstd compressor which uses Intel® QAT (QuickAssist
  * Technology)
  */
-public class QatZstdCompressorFactory implements ICompressorFactory {
-  private static final Logger logger = LoggerFactory.getLogger(QatZstdCompressorFactory.class);
+public class QatZstdCompressionProvider extends AbstractCompressionProvider {
+  private static final Logger logger = LoggerFactory.getLogger(QatZstdCompressionProvider.class);
   private static final String QAT_NOT_AVAILABLE_MESSAGE = "QAT accelerator is not available.";
-  private static final String SUPPORTED_COMPRESSOR_NAME =
-      ICompressorFactory.COMPRESSOR_NAME_MAP.get("zstd");
-
-  /** Constructs a new QatZstdCompressorFactory instance */
-  public QatZstdCompressorFactory() {}
 
   /**
    * @param options Compression options provided by Cassandra
@@ -35,21 +30,28 @@ public class QatZstdCompressorFactory implements ICompressorFactory {
    *     hardware path
    */
   @Override
-  public ICompressor createCompressor(Map<String, String> options) {
+  public ICompressor createCompressor(Class<?> compressorClass, Map<String, String> options)
+      throws IllegalStateException {
+    logger.info("Checking QAT compressor availability");
     if (QatZipper.isQatAvailable()) {
       logger.info("Loading QAT hardware accelerated compressor..");
       return QatZstdCompressor.create(options);
     }
+    logger.info("QAT hardware not available..");
     throw new IllegalStateException(QAT_NOT_AVAILABLE_MESSAGE);
   }
 
   /**
-   * Returns compressor class name in Cassandra that the hardware accelerates
+   * Checks if the QAT hardware is available and healthy
    *
-   * @return Name of Cassandra compressor class it supports
+   * @return true if QAT is available, false otherwise
+   * @throws Exception if there is an error determining the health of the provider
    */
   @Override
-  public String getSupportedCompressorName() {
-    return SUPPORTED_COMPRESSOR_NAME;
+  public boolean isHealthy()
+      throws Exception { // TODO - add more checks here to verify if QAT is working properly
+    boolean healthy = QatZipper.isQatAvailable();
+    logger.info("QAT health status : {}", healthy);
+    return healthy;
   }
 }

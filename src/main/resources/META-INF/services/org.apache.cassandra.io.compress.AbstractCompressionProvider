@@ -1,0 +1,9 @@
+# 
+# Copyright (c) 2025 Intel Corporation
+#
+# SPDX-License-Identifier: MIT
+#
+
+com.intel.qat.compression.deflate.QatDeflateCompressionProvider
+com.intel.qat.compression.zstd.QatZstdCompressionProvider
+
